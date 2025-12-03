@@ -22,8 +22,21 @@ jobs:
         with:
           node-version: '20'
 
+      # npm install is slow and wasteful because it installs all dependencies
+      # including dev dependencies, which is unnecessary for production use
+      # cache the node_modules directory between runs
+      # We use npm ci instead, which installs only production dependencies
+      # and is much faster.
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Run ESlint
         run: npx eslint . --ext .js || echo "No ESLint config found, skipping..."
@@ -45,8 +58,16 @@ jobs:
           node-version: '20'
 
       # install dependencies
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       # run tests
       - name: Run tests
