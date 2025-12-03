@@ -104,6 +104,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          output: type=docker
 
       - name: Save Docker Image
         run: docker save my-cicd-app:${{ github.sha }} -o app-image.tar
