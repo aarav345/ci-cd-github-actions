@@ -55,10 +55,18 @@ jobs:
 
 
   # Build Docker Image ( depends on test passing )
-  build:
+  build-and-push:
     name: Build Application
     runs-on: ubuntu-latest
     needs: [lint, test] # wait for lint and test to pass
+
+    # only run on pushes to main not on PR requests
+    if: github.ref == 'refs/heads/main'
+
+    permissions:
+      contents: read
+      packages: write # Required to push to ghcr.io
+
 
     steps:
       - name: Checkout code
@@ -67,15 +75,35 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker Image
+      # Login to github registry
+      - name: Login to Github container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+
+      # Prepare image tags
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/ci-cd-github-actions
+          tags: |
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+
+      - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: false
-          tags: my-cicd-app:${{ github.sha }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          outputs: type=docker   # replaces load: true
 
       - name: Save Docker Image
         run: docker save my-cicd-app:${{ github.sha }} -o app-image.tar
@@ -92,7 +120,7 @@ jobs:
     name: Deploy to staging
     runs-on: ubuntu-latest
 
-    needs: build
+    needs: build-and-push
 
     # only run on pushes to main ( not on PRs )
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
