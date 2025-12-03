@@ -10,6 +10,10 @@ app.get('/health', (req, res) => {
   res.json({ status: 'healthy' });
 });
 
+app.get('/goodbye', (req, res) => {
+  res.json({ message: 'Goodbye, CI/CD World!' });
+});
+
 const server = app.listen(port, () => {
   console.log(`App listening on port ${port}`);
 });
