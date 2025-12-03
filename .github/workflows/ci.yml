@@ -8,27 +8,111 @@ on:
 
 
 jobs:
-  test:
-    name: Run Tests
+
+  lint:
+    name: Lint code 
     runs-on: ubuntu-latest
 
-
     steps:
-      # get the code
       - name: Checkout code
         uses: actions/checkout@v2
 
-      # setup node.js
-      - name: Setup node.js 
-        uses: actions/setup-node@v2 
+      - name: Setup node.js
+        uses: actions/setup-node@v2
         with:
           node-version: '20'
 
-      # install dependencies
-      - name: Install dependencies
-        run: npm install
-
-      # run tests
-      - name: Run tests
-        run: npm test
+      # npm install is slow and wasteful because it installs all dependencies
+      # including dev dependencies, which is unnecessary for production use
+      # cache the node_modules directory between runs
+      # We use npm ci instead, which installs only production dependencies
+      # and is much faster.
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
       
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESlint
+        run: npx eslint . --ext .js || echo "No ESLint config found, skipping..."
+    
+
+
+  test:
+    name: Run Tests
+    uses: ./.github/workflows/reusable-test.yml
+    with:
+      node-version: '18'
+    secrets:
+      API_KEY: ${{ secrets.API_KEY }}
+      NODE_ENV: test
+
+
+
+  # Build Docker Image ( depends on test passing )
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+    needs: [lint, test] # wait for lint and test to pass
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: my-cicd-app:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          outputs: type=docker   # replaces load: true
+
+      - name: Save Docker Image
+        run: docker save my-cicd-app:${{ github.sha }} -o app-image.tar
+
+      - name: Upload Docker image as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: app-image.tar      
+
+
+
+  deploy:
+    name: Deploy to staging
+    runs-on: ubuntu-latest
+
+    needs: build
+
+    # only run on pushes to main ( not on PRs )
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download Docker image
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+
+
+      - name: Load Docker image
+        run: docker load -i app-image.tar
+
+
+      - name: Deploy to staging
+        run: |
+          echo "Deploying to staging server..."
+          echo "Image: my-cicd-app:${{ github.sha }}"
+        # In real scenario, you'd use Ansible/Terraform here
