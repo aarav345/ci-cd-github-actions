@@ -45,6 +45,10 @@ jobs:
     name: Run Tests
     runs-on: ubuntu-latest
 
+    env:
+      NODE_ENV: test
+      API_KEY: ${{ secrets.API_KEY }}
+
 
     steps:
       # get the code
