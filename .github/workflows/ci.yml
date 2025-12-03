@@ -93,6 +93,7 @@ jobs:
     permissions:
       contents: read
       packages: write # Required to push to ghcr.io
+      security-events: write # For uploading scan results
 
 
     steps:
@@ -142,7 +143,22 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: docker-image
-          path: app-image.tar      
+          path: app-image.tar    
+
+
+      # NEW: Scan the image for vulnerabilities  
+      - name: Run Trivy vulnerabilitiy scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'ghcr.io/${{ github.repository_owner }}/ci-cd-github-actions:latest'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      # Upload results to github security tab
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
 
 
 
@@ -174,3 +190,5 @@ jobs:
           echo "Deploying to staging server..."
           echo "Image: $(echo '${{ steps.meta.outputs.tags }}' | head -n 1)"
         # In real scenario, you'd use Ansible/Terraform here
+
+
