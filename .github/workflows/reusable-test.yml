@@ -1,0 +1,65 @@
+name: Reusable Test Workflow
+
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        required: false
+        type: string
+        default: '20'
+
+    secrets:
+      API_KEY:
+        required: true
+      NODE_ENV:
+        required: false
+
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node JS
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+      
+
+      - name: Install dependencies
+        run: npm ci
+      
+
+
+      - name: Run tests
+        env:
+          API_KEY: ${{ secrets.API_KEY }}
+        run: npm test
+
+
+      # run tests
+      - name: Run tests
+        run: npm test
+
+      - name: Generate test coverage
+        run: npm test --coverage
+
+      
+      # Upload test results for later analysis
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+  
