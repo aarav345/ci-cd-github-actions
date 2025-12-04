@@ -100,7 +100,6 @@ deploy-staging:
 
   environment:
     name: staging
-    url: http://${{ secrets.STAGING_SERVER_IP }}:3000
 
   steps:
     - name: Checkout code
