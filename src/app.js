@@ -6,7 +6,7 @@ const apiKey = process.env.API_KEY || 'not-set';
 
 app.get('/', (req, res) => {
   res.json({ 
-    message: 'Hello, CI/CD World!', 
+    message: 'Hello, CI/CD World! ssh and docker', 
     version: '1.0.0',
     environment: environment
   });
