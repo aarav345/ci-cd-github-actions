@@ -2,9 +2,12 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [main]
+    branches: 
+      - 'main'
+      - 'feat/ssh+docker'
   pull_request:
-    branches: [main]
+    branches: 
+      - 'main'
 
 
 jobs:
@@ -87,8 +90,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [lint, test, security-scan] # wait for lint and test to pass
 
-    # only run on pushes to main not on PR requests
-    if: github.ref == 'refs/heads/main'
 
     permissions:
       contents: read
@@ -119,8 +120,9 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository_owner }}/ci-cd-github-actions
           tags: |
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,name=${{ github.ref_name }},prefix=branch-
+            type=sha
+            type=raw,value=latest
 
 
       - name: Build and Push Docker Image
@@ -162,34 +164,55 @@ jobs:
 
 
 
-  deploy:
+  deploy-staging:
     name: Deploy to staging
     runs-on: ubuntu-latest
-
     needs: [build-and-push]
 
-    # only run on pushes to main ( not on PRs )
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: staging
+      # url: http://example.com --> optional
+
     
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
-      - name: Download Docker image
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-image
 
-
-      - name: Load Docker image
-        run: docker load -i app-image.tar
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.STAGING_SERVER_IP }} >> ~/.ssh/known_hosts
 
 
       - name: Deploy to staging
         run: |
-          echo "Deploying to staging server..."
-          echo "Image: $(echo '${{ steps.meta.outputs.tags }}' | head -n 1)"
-        # In real scenario, you'd use Ansible/Terraform here
+          ssh ubuntu@${{ secrets.STAGING_SERVER_IP }} << 'EOF'
+
+            # Login to GitHub Container Registry
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
+            # Pull latest image
+            docker pull ghcr.io/${{ github.repository_owner }}/ci-cd-github-actions:latest
+            
+            # Stop old container
+            docker stop ci-cd-github-actions || true
+            docker rm ci-cd-github-actions || true
+            
+            # Run new container
+            docker run -d \
+              --name ci-cd-github-actions \
+              --restart unless-stopped \
+              -p 3000:3000 \
+              -e NODE_ENV=production \
+              -e API_KEY=${{ secrets.API_KEY }} \
+              ghcr.io/${{ github.repository_owner }}/ci-cd-github-actions:latest
+            
+            # Verify it's running
+            sleep 5
+            curl -f http://localhost:3000/health || exit 1
+          EOF
 
 
