@@ -3,10 +3,11 @@ name: CI Pipeline
 on:
   push:
     branches: 
+      - 'main'
       - 'feat/ssh+docker'
   pull_request:
     branches: 
-      - 'feat/ssh+docker'
+      - 'main'
 
 
 jobs:
