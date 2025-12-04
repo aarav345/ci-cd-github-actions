@@ -4,7 +4,7 @@ on:
   push:
     branches: 
       - 'main'
-      - 'feat/ssh+docker'
+      - 'feat-ssh-docker-ci-cd'
   pull_request:
     branches: 
       - 'main'
@@ -120,9 +120,8 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository_owner }}/ci-cd-github-actions
           tags: |
-            type=ref,name=${{ github.ref_name }},prefix=branch-
-            type=sha
-            type=raw,value=latest
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
 
 
       - name: Build and Push Docker Image
