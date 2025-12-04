@@ -2,9 +2,9 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [main, feat/ssh+docker]
+    branches: [feat/ssh+docker]
   pull_request:
-    branches: [main]
+    branches: [feat/ssh+docker]
 
 
 jobs:
@@ -87,8 +87,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [lint, test, security-scan] # wait for lint and test to pass
 
-    # only run on pushes to main not on PR requests
-    if: github.ref == 'refs/heads/feat/ssh+docker' && github.event_name == 'push'
 
     permissions:
       contents: read
@@ -166,9 +164,6 @@ jobs:
     name: Deploy to staging
     runs-on: ubuntu-latest
     needs: [build-and-push]
-
-    # only run on pushes to main ( not on PRs )
-    if: github.ref == 'refs/heads/feat/ssh+docker' && github.event_name == 'push'
 
     environment:
       name: staging
