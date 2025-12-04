@@ -273,12 +273,12 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H ${{ secrets.STAGING_SERVER_IP }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.PRODUCTION_SERVER_IP }} >> ~/.ssh/known_hosts
 
 
       - name: Deploy to staging
         run: |
-          ssh ubuntu@${{ secrets.STAGING_SERVER_IP }} << 'EOF'
+          ssh ubuntu@${{ secrets.PRODUCTION_SERVER_IP }} << 'EOF'
 
           # Docker already installed in production server
           
