@@ -89,7 +89,20 @@ Add:
 
 ---
 
-## ✅ 4. GitHub Actions Workflow Example
+## ✅ 4. Add GitHub environments
+
+Go to:
+
+**GitHub → Repository → Settings → Environments**
+
+
+| Environment | Auto-deploy? | Notes                                          |
+| ----------- | ------------ | ---------------------------------------------- |
+| Staging     | Yes          | Test changes before production                 |
+| Production  | No           | Requires **manual approval** in GitHub Actions |
+
+
+## ✅ 5. GitHub Actions Workflow Example
 
 ```yaml
 deploy-staging:
